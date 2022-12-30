@@ -54,24 +54,24 @@ func GetUsageDetails(db *gorm.DB, date time.Time, limit int, page int) (*[]model
 	return &Data, nil
 }
 
-func GetUserDetails(db *gorm.DB, username string) (*models.UserDetails, error) {
+func GetSearchUserDetails(db *gorm.DB, username string) (*models.UserDetails, error) {
 	var response models.UserDetails
 
-	if !checkUserExists(db, username) {
-		return &response, errors.New("user not found")
-	}
-
-	//currentTime := time.Date(2022, time.December, 10, 23, 10, 5, 0, time.Local)
 	currentTime := time.Now()
 	timeBefore1Hour := currentTime.Add(time.Hour * -1)
 	timeBefore6Hours := currentTime.Add(time.Hour * -6)
 	timeBefore24Hours := currentTime.Add(time.Hour * -24)
 
 	//db call
-	rows, err := db.Raw(`SELECT COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? UNION ALL SELECT COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? UNION ALL SELECT COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? `, username, timeBefore1Hour, username, timeBefore6Hours, username, timeBefore24Hours).Rows()
+	rows, err := db.Raw(`SELECT username, COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? UNION ALL SELECT username, COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? UNION ALL SELECT username, COALESCE(SUM(usage_time), 0) AS total_usage_time, COALESCE(SUM(upload), 0) AS total_upload_size, COALESCE(SUM(download), 0) AS total_download_size FROM iums_records WHERE username = ? AND start_time >= ? `, username, timeBefore1Hour, username, timeBefore6Hours, username, timeBefore24Hours).Rows()
 
 	if err != nil {
 		return &response, err
+	}
+
+	//edge case
+	if rows == nil {
+		return &response, errors.New("user not found")
 	}
 
 	var userRecords []userRecord
@@ -91,6 +91,8 @@ func GetUserDetails(db *gorm.DB, username string) (*models.UserDetails, error) {
 	}
 
 	var userRecentInternetUsage = make([]models.Usage, 3)
+
+	//format the values and return as per requirement
 	for i := 0; i < 3; i++ {
 
 		userRecentInternetUsage[i].Time = formatDuration(userRecords[i].usageTime)
@@ -149,13 +151,4 @@ func formatSize(size float64) string {
 		return strconv.FormatFloat((size/gb), 'f', 1, 64) + "GB"
 	}
 	return strconv.FormatFloat((size/mb), 'f', 1, 64) + "MB"
-}
-
-func checkUserExists(db *gorm.DB, username string) bool {
-	var userExists bool
-	db.Table("iums_records").
-		Select("count(1) > 0").
-		Where("iums_records.username = ?", username).
-		Find(&userExists)
-	return userExists
 }

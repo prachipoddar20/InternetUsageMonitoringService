@@ -28,7 +28,10 @@ func (repository *iumsRepo) InsertDataIntoDb() {
 	database.InsertDatasetIntoDB(repository.Db)
 }
 
-// /analytics?date=<param>&limit=<param>&page=<param>
+/*
+ *  /analytics?date=<param>&limit=<param>&page=<param>
+ *  sample: http://localhost:8000/analytics?date=10122022&limit=100&page=2
+ */
 func (repository *iumsRepo) GetUsageDetails(c *gin.Context) {
 	dateProvided, isDateProvided := c.GetQuery("date")
 	limitProvided := c.DefaultQuery("limit", "100")
@@ -67,7 +70,10 @@ func (repository *iumsRepo) GetUsageDetails(c *gin.Context) {
 	c.JSON(http.StatusOK, successResponseForUsageDetails{Ok: true, Response: *response})
 }
 
-// /search/user?username=<param>
+/*
+ *  /search/user?username=<param>
+ *  sample: http://localhost:8000/user/search?username=obsessedHare3
+ */
 func (repository *iumsRepo) GetUserDetails(c *gin.Context) {
 
 	username, isUsernameProvided := c.GetQuery("username")
@@ -81,7 +87,7 @@ func (repository *iumsRepo) GetUserDetails(c *gin.Context) {
 	}
 
 	//calling service
-	userDetails, err := service.GetUserDetails(repository.Db, username)
+	userDetails, err := service.GetSearchUserDetails(repository.Db, username)
 
 	if err != nil {
 		handleError(errorMessage, err.Error(), http.StatusInternalServerError, c)
